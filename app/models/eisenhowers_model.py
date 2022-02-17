@@ -12,5 +12,5 @@ class EisenhowersModel(db.Model):
 
     __tablename__ = "eisenhowers"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=False)
     type = Column(String(100))
