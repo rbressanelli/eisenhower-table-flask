@@ -1,4 +1,3 @@
-from sqlalchemy import desc
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.session import Session
 from psycopg2.errors import UniqueViolation, NotNullViolation
@@ -11,6 +10,7 @@ from app.controllers.eisenhower_controller import populate_table
 from app.models.eisenhowers_model import EisenhowersModel
 from app.models.categories_model import CategoriesModel
 from app.exc.classification_error import ClassificationError
+from app.services.tasks_service import add_categories
 
 
 def create_task():
@@ -35,17 +35,7 @@ def create_task():
         
         registered_categories = [cat.name for cat in CategoriesModel.query.all()]
         
-        for value in info_categories:
-            if value in registered_categories:                
-                new = CategoriesModel.query.filter_by(name=value).one()
-                new_task.categories.append(new)
-            elif value not in registered_categories:
-                category_data = {"name": f"{value}", "description": ""}                
-                new_category = CategoriesModel(**category_data)
-                session.add(new_category)
-                session.commit()                 
-                new = CategoriesModel.query.filter_by(name=value).one()                
-                new_task.categories.append(new)      
+        add_categories(info_categories, registered_categories, new_task)        
 
         session.add(new_task)
         session.commit()
@@ -95,32 +85,25 @@ def update_task(id):
         return {
             "msg": "task not found!"
         }, HTTPStatus.NOT_FOUND
+    
+    
+    try:    
+        info_categories = [cat.lower() for cat in data.pop('categories')]        
         
-    info_categories = [cat.lower() for cat in data.pop('categories')]
-    
-    for key, value in data.items():
-        setattr(task, key, value)    
-    
-    importance = str(task.importance)
-    urgency = str(task.urgency)    
-            
-    classification = EisenhowersModel.query.filter_by(id=importance + urgency).first()        
-    task.eisenhower_id = classification.id  
-    
-    registered_categories = [cat.name for cat in CategoriesModel.query.all()]
+        for key, value in data.items():
+            setattr(task, key, value)    
         
-    for value in info_categories:
-        if value in registered_categories:                
-            new = CategoriesModel.query.filter_by(name=value).one()
-            task.categories.append(new)
-        elif value not in registered_categories:
-            category_data = {"name": f"{value}", "description": ""}                
-            new_category = CategoriesModel(**category_data)
-            session.add(new_category)
-            session.commit()                 
-            new = CategoriesModel.query.filter_by(name=value).one()                
-            task.categories.append(new) 
-    
+        importance = str(task.importance)
+        urgency = str(task.urgency)    
+                
+        classification = EisenhowersModel.query.filter_by(id=importance + urgency).first()        
+        task.eisenhower_id = classification.id  
+        
+        registered_categories = [cat.name for cat in CategoriesModel.query.all()]
+        add_categories(info_categories, registered_categories, task)    
+    except KeyError as err:
+        print(f'key {err} não informada')    
+       
     session.add(task)
     session.commit()
     

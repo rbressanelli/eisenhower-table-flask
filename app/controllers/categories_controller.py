@@ -1,30 +1,31 @@
+from flask import request, current_app, jsonify
+from http import HTTPStatus
+from psycopg2.errors import UniqueViolation, NotNullViolation
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.session import Session
-from flask import request, current_app, jsonify, session
 from werkzeug.exceptions import BadRequest, NotFound
-from http import HTTPStatus
 
 from app.models.categories_model import CategoriesModel
-from app.services.categories_service import check_body_request
+
 
 def create_category():
     session: Session = current_app.db.session
 
     try:
-        data = request.get_json()
-        checked_data = check_body_request(data, name=str, description=str)
+        data = request.get_json()       
 
-        category = CategoriesModel(**checked_data)
+        category = CategoriesModel(**data)
+        
         session.add(category)
-
         session.commit()
         
         return jsonify(category), HTTPStatus.CREATED
         
-    except IntegrityError:
-        return jsonify ({
-            "msg": "category already exists!" 
-        }), HTTPStatus.CONFLICT 
+    except IntegrityError as err:    
+        if isinstance(err.orig, UniqueViolation):            
+            return {'error': 'task already exists!'}, HTTPStatus.CONFLICT
+        elif isinstance(err.orig, NotNullViolation):
+            return {'error': 'missing `name` key!'}, HTTPStatus.BAD_REQUEST 
     
     except BadRequest as err:
         return err.description, HTTPStatus.BAD_REQUEST
