@@ -1,6 +1,7 @@
+from dataclasses import dataclass
+
 from sqlalchemy import Column, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import validates
-from dataclasses import dataclass
 from werkzeug.exceptions import BadRequest
 
 from app.configs.database import db
@@ -14,8 +15,8 @@ class TasksModel(db.Model):
     name: str
     description: str
     duration: int
-    # importance: int
-    # urgency: int
+    importance: int
+    urgency: int
 
     __tablename__ = "tasks"
 

@@ -1,6 +1,7 @@
+from dataclasses import dataclass
+
 from sqlalchemy import Column, Integer, String, Text
 from sqlalchemy.orm import backref, relationship, validates
-from dataclasses import dataclass
 from werkzeug.exceptions import BadRequest
 
 from app.configs.database import db

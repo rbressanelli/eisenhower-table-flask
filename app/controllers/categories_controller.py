@@ -1,6 +1,7 @@
-from flask import request, current_app, jsonify
 from http import HTTPStatus
-from psycopg2.errors import UniqueViolation, NotNullViolation
+
+from flask import current_app, jsonify, request
+from psycopg2.errors import NotNullViolation, UniqueViolation
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.session import Session
 from werkzeug.exceptions import BadRequest, NotFound
@@ -42,13 +43,19 @@ def get_categories():
     except NotFound:
         return {
             'error': 'No registered categories'
-        }, HTTPStatus.NOT_FOUND
-        
+        }, HTTPStatus.NOT_FOUND    
+    
     return jsonify([{
             "id": category.id,
             "name": category.name,
             "description": category.description,
-            "tasks": [task for task in category.tasks]
+            "tasks": [{
+                'id': task.id,
+                "name": task.name,
+                "description":task.description,
+                "duration": task.duration,
+                "classification": task.eisenhower.type,                
+        } for task in category.tasks]
         } for category in categories]), HTTPStatus.OK       
   
 

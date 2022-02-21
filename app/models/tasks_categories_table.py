@@ -1,7 +1,6 @@
-from sqlalchemy import Column, Integer, ForeignKey
+from sqlalchemy import Column, ForeignKey, Integer
 
 from app.configs.database import db
-
 
 tasks_categories = db.Table("tasks_categories",
 

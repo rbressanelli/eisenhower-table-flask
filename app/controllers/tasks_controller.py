@@ -1,15 +1,16 @@
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm.session import Session
-from psycopg2.errors import UniqueViolation, NotNullViolation
-from flask import request, current_app, jsonify
-from werkzeug.exceptions import BadRequest
 from http import HTTPStatus
 
-from app.models.tasks_model import TasksModel
+from flask import current_app, jsonify, request
+from psycopg2.errors import NotNullViolation, UniqueViolation
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm.session import Session
+from werkzeug.exceptions import BadRequest
+
 from app.controllers.eisenhower_controller import populate_table
-from app.models.eisenhowers_model import EisenhowersModel
-from app.models.categories_model import CategoriesModel
 from app.exc.classification_error import ClassificationError
+from app.models.categories_model import CategoriesModel
+from app.models.eisenhowers_model import EisenhowersModel
+from app.models.tasks_model import TasksModel
 from app.services.tasks_service import add_categories
 
 
@@ -84,15 +85,18 @@ def update_task(id):
     if not task:
         return {
             "msg": "task not found!"
-        }, HTTPStatus.NOT_FOUND
-    
+        }, HTTPStatus.NOT_FOUND    
     
     try:    
         info_categories = [cat.lower() for cat in data.pop('categories')]        
-        
+           
+    except KeyError:        
+        info_categories = []
+           
+    finally:
         for key, value in data.items():
             setattr(task, key, value)    
-        
+            
         importance = str(task.importance)
         urgency = str(task.urgency)    
                 
@@ -101,8 +105,6 @@ def update_task(id):
         
         registered_categories = [cat.name for cat in CategoriesModel.query.all()]
         add_categories(info_categories, registered_categories, task)    
-    except KeyError as err:
-        print(f'key {err} não informada')    
        
     session.add(task)
     session.commit()
@@ -136,6 +138,11 @@ def delete_task(id):
 def get_tasks():   
     
     tasks = TasksModel.query.order_by('id').all()
+    
+    if not tasks:
+        return jsonify({
+            'error': 'No registered tasks'
+        }), HTTPStatus.NOT_FOUND
     
     return jsonify([{
             'id': task.id,

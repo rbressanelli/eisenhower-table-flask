@@ -1,6 +1,6 @@
+from flask import current_app
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.session import Session
-from flask import current_app
 
 from app.models.eisenhowers_model import EisenhowersModel
 

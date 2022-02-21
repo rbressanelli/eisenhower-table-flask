@@ -1,8 +1,8 @@
 from flask import Blueprint
 
 from app.routes.categories_blueprint import bp_categories
-from app.routes.tasks_blueprint import bp_tasks
 from app.routes.error_blueprint import bp_error
+from app.routes.tasks_blueprint import bp_tasks
 
 bp_api = Blueprint("bp_api", __name__, url_prefix="/api")
 
