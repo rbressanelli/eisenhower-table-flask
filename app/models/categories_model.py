@@ -22,5 +22,5 @@ class CategoriesModel(db.Model):
     tasks = relationship(
         "TasksModel",
         secondary=tasks_categories,
-        backref="categories"
+        backref=backref("categories", uselist=True)
     )

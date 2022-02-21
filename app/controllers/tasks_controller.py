@@ -1,14 +1,160 @@
+from sqlalchemy import desc
 from sqlalchemy.exc import IntegrityError
 from flask import request, current_app, jsonify, session
 from sqlalchemy.orm.session import Session
 from http import HTTPStatus
+from psycopg2.errors import UniqueViolation, NotNullViolation
 
 from app.models.tasks_model import TasksModel
 from app.controllers.eisenhower_controller import populate_table
+from app.models.eisenhowers_model import EisenhowersModel
+from app.models.categories_model import CategoriesModel
+from app.exc.classification_error import ClassificationError
+
 
 def create_task():
+    
+    if not EisenhowersModel.query.all():
+        populate_table()
+        
+    session: Session = current_app.db.session
 
-    populate_table()
+    try:
+        data = request.get_json()
+        
+        importance = str(abs(data['importance']))
+        urgency = str(abs(data['urgency']))
+        classification = EisenhowersModel.query.filter_by(id=importance + urgency).first()        
+                
+        info_categories = [cat.lower() for cat in data.pop('categories')]
+         
+        new_task = TasksModel(**data)        
+        
+        new_task.eisenhower_id = classification.id
+        
+        registered_categories = [cat.name for cat in CategoriesModel.query.all()]
+        
+        for value in info_categories:
+            if value in registered_categories:                
+                new = CategoriesModel.query.filter_by(name=value).one()
+                new_task.categories.append(new)
+            elif value not in registered_categories:
+                category_data = {"name": f"{value}", "description": ""}                
+                new_category = CategoriesModel(**category_data)
+                session.add(new_category)
+                session.commit()                 
+                new = CategoriesModel.query.filter_by(name=value).one()                
+                new_task.categories.append(new)      
+
+        session.add(new_task)
+        session.commit()
+        
+    except IntegrityError as err:
+        print(err.args)
+        if isinstance(err.orig, UniqueViolation):            
+            return {'error': 'task already exists!'}, HTTPStatus.CONFLICT
+        elif isinstance(err.orig, NotNullViolation):
+            return {'error': 'missing `name` key!'}, HTTPStatus.BAD_REQUEST  
+    except ClassificationError as err:
+        return jsonify({
+                        "msg": {
+                            "valid_options": {
+                                "importance": [1, 2],
+                                "urgency": [1, 2]
+                            },
+                            "recieved_options": {
+                                "importance": int(importance),
+                                "urgency": int(urgency)
+                            }
+                        }
+                    }), HTTPStatus.BAD_REQUEST
+        
+    return jsonify({
+        "id": new_task.id,
+        "name": new_task.name,
+        "description":new_task.description,
+        "duration": new_task.duration,
+        "classification": new_task.eisenhower.type,
+        "categories": [category.name for category in new_task.categories]
+    }), HTTPStatus.CREATED
 
 
-    return ''
+def update_task(id):
+    
+    session: Session = current_app.db.session
+
+    data = request.get_json()
+    
+    task = TasksModel.query.get(id) 
+    
+    if not task:
+        return {
+            "msg": "task not found!"
+        }, HTTPStatus.NOT_FOUND
+        
+    info_categories = [cat.lower() for cat in data.pop('categories')]
+    
+    for key, value in data.items():
+        setattr(task, key, value)    
+    
+    importance = str(task.importance)
+    urgency = str(task.urgency)    
+            
+    classification = EisenhowersModel.query.filter_by(id=importance + urgency).first()        
+    task.eisenhower_id = classification.id  
+    
+    registered_categories = [cat.name for cat in CategoriesModel.query.all()]
+        
+    for value in info_categories:
+        if value in registered_categories:                
+            new = CategoriesModel.query.filter_by(name=value).one()
+            task.categories.append(new)
+        elif value not in registered_categories:
+            category_data = {"name": f"{value}", "description": ""}                
+            new_category = CategoriesModel(**category_data)
+            session.add(new_category)
+            session.commit()                 
+            new = CategoriesModel.query.filter_by(name=value).one()                
+            task.categories.append(new) 
+    
+    session.add(task)
+    session.commit()
+    
+    return jsonify({
+            'id': task.id,
+            "name": task.name,
+            "description":task.description,
+            "duration": task.duration,
+            "classification": task.eisenhower.type,
+            'categories': [category.name for category in task.categories]
+        }), HTTPStatus.OK
+    
+
+def delete_task(id):
+    session: Session = current_app.db.session
+    
+    task = TasksModel.query.get(id) 
+    
+    if not task:
+        return {
+            "msg": "task not found!"
+        }, HTTPStatus.NOT_FOUND 
+    
+    session.delete(task)
+    session.commit()   
+    
+    return "", HTTPStatus.NO_CONTENT
+
+
+def get_tasks():   
+    
+    tasks = TasksModel.query.order_by('id').all()
+    
+    return jsonify([{
+            'id': task.id,
+            "name": task.name,
+            "description":task.description,
+            "duration": task.duration,
+            "classification": task.eisenhower.type,
+            'categories': [category.name for category in task.categories]
+        } for task in tasks]), HTTPStatus.OK

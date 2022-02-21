@@ -2,27 +2,56 @@ from sqlalchemy.exc import IntegrityError
 from flask import request, current_app, jsonify, session
 from sqlalchemy.orm.session import Session
 from http import HTTPStatus
+from werkzeug.exceptions import BadRequest, NotFound
 
 from app.models.categories_model import CategoriesModel
+from app.models.eisenhowers_model import EisenhowersModel
+from app.models.tasks_model import TasksModel
+from app.services.categories_service import check_body_request
 
 def create_category():
     session: Session = current_app.db.session
 
-    data = request.get_json()
-
-    category = CategoriesModel(**data)
-
-    session.add(category)
-
     try:
+        data = request.get_json()
+        checked_data = check_body_request(data, name=str, description=str)
+
+        category = CategoriesModel(**checked_data)
+        session.add(category)
+
         session.commit()
+        
+        return jsonify(category), HTTPStatus.CREATED
+        
     except IntegrityError:
-        return {
+        return jsonify ({
             "msg": "category already exists!" 
-        }, HTTPStatus.CONFLICT    
+        }), HTTPStatus.CONFLICT 
+    
+    except BadRequest as err:
+        return err.description, HTTPStatus.BAD_REQUEST
 
-    return jsonify(category), HTTPStatus.CREATED
 
+def get_categories():    
+    
+    try:
+        categories = CategoriesModel.query.all()
+
+        if not categories:
+            raise NotFound
+        
+    except NotFound:
+        return {
+            'error': 'No registered categories'
+        }, HTTPStatus.NOT_FOUND
+        
+    return jsonify([{
+            "id": category.id,
+            "name": category.name,
+            "description": category.description,
+            "tasks": [task for task in category.tasks]
+        } for category in categories]), HTTPStatus.OK       
+  
 
 def update_category(id):
     session: Session = current_app.db.session

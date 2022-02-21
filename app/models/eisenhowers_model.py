@@ -14,3 +14,6 @@ class EisenhowersModel(db.Model):
 
     id = Column(Integer, primary_key=True, autoincrement=False)
     type = Column(String(100))
+
+    tasks = db.relationship("TasksModel", backref="eisenhower")   
+    

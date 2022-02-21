@@ -1,7 +1,9 @@
 from sqlalchemy import Column, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import validates
 from dataclasses import dataclass
 
 from app.configs.database import db
+from app.exc.classification_error import ClassificationError
 
 
 @dataclass
@@ -24,3 +26,11 @@ class TasksModel(db.Model):
     urgency = Column(Integer)
 
     eisenhower_id = Column(Integer, ForeignKey('eisenhowers.id'))
+
+
+    @validates("importance", "urgency")
+    def validate_eisenhowers_indexes(self, key, value):
+        if not 1 <= value <= 2:
+            raise ClassificationError
+
+        return value
