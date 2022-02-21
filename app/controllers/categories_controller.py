@@ -1,12 +1,10 @@
 from sqlalchemy.exc import IntegrityError
-from flask import request, current_app, jsonify, session
 from sqlalchemy.orm.session import Session
-from http import HTTPStatus
+from flask import request, current_app, jsonify, session
 from werkzeug.exceptions import BadRequest, NotFound
+from http import HTTPStatus
 
 from app.models.categories_model import CategoriesModel
-from app.models.eisenhowers_model import EisenhowersModel
-from app.models.tasks_model import TasksModel
 from app.services.categories_service import check_body_request
 
 def create_category():

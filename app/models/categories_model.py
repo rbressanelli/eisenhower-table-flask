@@ -2,8 +2,8 @@ from sqlalchemy import Column, Integer, String, Text
 from sqlalchemy.orm import backref, relationship
 from dataclasses import dataclass
 
-from app.models.tasks_categories_table import tasks_categories
 from app.configs.database import db
+from app.models.tasks_categories_table import tasks_categories
 
 
 @dataclass

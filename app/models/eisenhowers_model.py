@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, Text
+from sqlalchemy import Column, Integer, String
 from dataclasses import dataclass
 
 from app.configs.database import db

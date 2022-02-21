@@ -1,9 +1,10 @@
 from sqlalchemy import desc
 from sqlalchemy.exc import IntegrityError
-from flask import request, current_app, jsonify, session
 from sqlalchemy.orm.session import Session
-from http import HTTPStatus
 from psycopg2.errors import UniqueViolation, NotNullViolation
+from flask import request, current_app, jsonify
+from werkzeug.exceptions import BadRequest
+from http import HTTPStatus
 
 from app.models.tasks_model import TasksModel
 from app.controllers.eisenhower_controller import populate_table
@@ -22,13 +23,13 @@ def create_task():
     try:
         data = request.get_json()
         
-        importance = str(abs(data['importance']))
-        urgency = str(abs(data['urgency']))
-        classification = EisenhowersModel.query.filter_by(id=importance + urgency).first()        
                 
         info_categories = [cat.lower() for cat in data.pop('categories')]
          
         new_task = TasksModel(**data)        
+        importance = str(abs(data['importance']))
+        urgency = str(abs(data['urgency']))
+        classification = EisenhowersModel.query.filter_by(id=importance + urgency).first()        
         
         new_task.eisenhower_id = classification.id
         
@@ -49,8 +50,7 @@ def create_task():
         session.add(new_task)
         session.commit()
         
-    except IntegrityError as err:
-        print(err.args)
+    except IntegrityError as err:        
         if isinstance(err.orig, UniqueViolation):            
             return {'error': 'task already exists!'}, HTTPStatus.CONFLICT
         elif isinstance(err.orig, NotNullViolation):
@@ -63,11 +63,15 @@ def create_task():
                                 "urgency": [1, 2]
                             },
                             "recieved_options": {
-                                "importance": int(importance),
-                                "urgency": int(urgency)
+                                "importance": data['importance'],
+                                "urgency": data['urgency']
                             }
                         }
                     }), HTTPStatus.BAD_REQUEST
+    except BadRequest as err:
+        return jsonify(err.description), HTTPStatus.BAD_REQUEST   
+    except TypeError as err:        
+        return jsonify(err.args[0]),HTTPStatus.BAD_REQUEST
         
     return jsonify({
         "id": new_task.id,
